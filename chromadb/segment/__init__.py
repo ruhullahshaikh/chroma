@@ -112,7 +112,7 @@ class SegmentManager(Component):
         pass
 
     @abstractmethod
-    def delete_segments(self, segments: Sequence[Segment]) -> Sequence[UUID]:
+    def delete_segments(self, collection_id: UUID) -> Sequence[UUID]:
         """Delete any local state for all the segments associated with a collection, and
         returns a sequence of their IDs. Does not update the SysDB."""
         pass

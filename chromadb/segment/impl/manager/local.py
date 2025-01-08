@@ -153,7 +153,8 @@ class LocalSegmentManager(SegmentManager):
         OpenTelemetryGranularity.OPERATION_AND_SEGMENT,
     )
     @override
-    def delete_segments(self, segments: Sequence[Segment]) -> Sequence[UUID]:
+    def delete_segments(self, collection_id: UUID) -> Sequence[UUID]:
+        segments = self._sysdb.get_segments(collection=collection_id)
         for segment in segments:
             collection_id = segment["collection"]
             if segment["id"] in self._instances:

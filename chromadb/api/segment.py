@@ -384,11 +384,10 @@ class SegmentAPI(ServerAPI):
         )
 
         if existing:
-            segments = self._sysdb.get_segments(collection=existing[0].id)
+            self._manager.delete_segments(collection_id=existing[0].id)
             self._sysdb.delete_collection(
                 existing[0].id, tenant=tenant, database=database
             )
-            self._manager.delete_segments(segments)
         else:
             raise ValueError(f"Collection {name} does not exist.")
 
@@ -895,11 +894,15 @@ class SegmentAPI(ServerAPI):
 
     @trace_method("SegmentAPI._scan", OpenTelemetryGranularity.ALL)
     def _scan(self, collection_id: UUID) -> Scan:
-        collection_and_segments = self._sysdb.get_collection_with_segments(collection_id)
+        collection_and_segments = self._sysdb.get_collection_with_segments(
+            collection_id
+        )
         # For now collection should have exactly one segment per scope:
         # - Local scopes: vector, metadata
-        # - Distributed scopes: vector, metadata, record 
-        scope_to_segment = {segment["scope"]: segment for segment in collection_and_segments["segments"]}
+        # - Distributed scopes: vector, metadata, record
+        scope_to_segment = {
+            segment["scope"]: segment for segment in collection_and_segments["segments"]
+        }
         return Scan(
             collection=collection_and_segments["collection"],
             knn=scope_to_segment[t.SegmentScope.VECTOR],
