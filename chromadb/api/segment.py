@@ -18,7 +18,7 @@ from chromadb.telemetry.opentelemetry import (
 )
 from chromadb.telemetry.product import ProductTelemetryClient
 from chromadb.ingest import Producer
-from chromadb.types import Collection as CollectionModel
+from chromadb.types import Collection as CollectionModel, CollectionAndSegments
 from chromadb import __version__
 from chromadb.errors import (
     InvalidDimensionException,
@@ -55,14 +55,17 @@ from chromadb.telemetry.product.events import (
 
 import chromadb.types as t
 from typing import (
+    Dict,
     Optional,
     Sequence,
+    Tuple,
     Generator,
     List,
     Any,
     Callable,
     TypeVar,
 )
+from datetime import datetime, timedelta
 from overrides import override
 from uuid import UUID, uuid4
 from functools import wraps
@@ -118,6 +121,7 @@ class SegmentAPI(ServerAPI):
     _tenant_id: str
     _topic_ns: str
     _rate_limit_enforcer: RateLimitEnforcer
+    _collection_version_cache: Dict[UUID, Tuple[datetime, CollectionAndSegments]]
 
     def __init__(self, system: System):
         super().__init__(system)
@@ -130,6 +134,7 @@ class SegmentAPI(ServerAPI):
         self._opentelemetry_client = self.require(OpenTelemetryClient)
         self._producer = self.require(Producer)
         self._rate_limit_enforcer = self._system.require(RateLimitEnforcer)
+        self._collection_version_cache = {}
 
     @override
     def heartbeat(self) -> int:
@@ -910,9 +915,12 @@ class SegmentAPI(ServerAPI):
 
     @trace_method("SegmentAPI._scan", OpenTelemetryGranularity.OPERATION)
     def _scan(self, collection_id: UUID) -> Scan:
-        collection_and_segments = self._sysdb.get_collection_with_segments(
-            collection_id
-        )
+        if collection_id not in self._collection_version_cache or self._collection_version_cache[collection_id][0] + timedelta(seconds=10) < datetime.now():
+            fresh_collection_version = self._sysdb.get_collection_with_segments(
+                collection_id
+            )
+            self._collection_version_cache[collection_id] = (datetime.now(), fresh_collection_version)
+        collection_and_segments = self._collection_version_cache[collection_id][1]
         # For now collection should have exactly one segment per scope:
         # - Local scopes: vector, metadata
         # - Distributed scopes: vector, metadata, record
