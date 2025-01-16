@@ -1268,13 +1268,13 @@ class FastAPI(Server):
             # self._set_request_context(request=request)
             # add_attributes_to_current_span({"tenant": tenant})
 
+            np_embeddings = convert_list_embeddings_to_np(query.query_embeddings) if query.query_embeddings else None
+
             # return self._api._query(
             #     collection_id=_uuid(collection_id),
             #     query_embeddings=cast(
             #         Embeddings,
-            #         convert_list_embeddings_to_np(query.query_embeddings)
-            #         if query.query_embeddings
-            #         else None,
+            #         np_embeddings,
             #     ),
             #     n_results=query.n_results,
             #     where=query.where,
