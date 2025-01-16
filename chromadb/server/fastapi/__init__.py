@@ -201,15 +201,15 @@ class FastAPI(Server):
         self._quota_enforcer = self._system.require(QuotaEnforcer)
         self._system.start()
 
-        self._app.middleware("http")(check_http_version_middleware)
-        self._app.middleware("http")(catch_exceptions_middleware)
-        self._app.middleware("http")(add_trace_id_to_response_middleware)
-        self._app.add_middleware(
-            CORSMiddleware,
-            allow_headers=["*"],
-            allow_origins=settings.chroma_server_cors_allow_origins,
-            allow_methods=["*"],
-        )
+        # self._app.middleware("http")(check_http_version_middleware)
+        # self._app.middleware("http")(catch_exceptions_middleware)
+        # self._app.middleware("http")(add_trace_id_to_response_middleware)
+        # self._app.add_middleware(
+        #     CORSMiddleware,
+        #     allow_headers=["*"],
+        #     allow_origins=settings.chroma_server_cors_allow_origins,
+        #     allow_methods=["*"],
+        # )
         self._app.add_exception_handler(QuotaError, self.quota_exception_handler)
         self._app.add_exception_handler(
             RateLimitError, self.rate_limit_exception_handler
@@ -234,9 +234,9 @@ class FastAPI(Server):
         self._app.include_router(self.router)
 
         use_route_names_as_operation_ids(self._app)
-        instrument_fastapi(self._app)
-        telemetry_client = self._system.instance(ProductTelemetryClient)
-        telemetry_client.capture(ServerStartEvent())
+        # instrument_fastapi(self._app)
+        # telemetry_client = self._system.instance(ProductTelemetryClient)
+        # telemetry_client.capture(ServerStartEvent())
 
     def generate_openapi(self) -> Dict[str, Any]:
         """Used instead of the default openapi() generation handler to include manually-populated schemas."""
@@ -1216,32 +1216,21 @@ class FastAPI(Server):
                 database=database_name,
             )
 
-        # nnresult = cast(
-        #     QueryResult,
-        #     await to_thread.run_sync(
-        #         process_query,
-        #         request,
-        #         await request.body(),
-        #         limiter=self._capacity_limiter,
-        #     ),
-        # )
-
-        nnresult = QueryResult(
-            ids=[],
-            embeddings=None,
-            documents=None,
-            uris=None,
-            data=None,
-            metadatas=None,
-            distances=None,
-            included=[], 
+        nnresult = cast(
+            QueryResult,
+            await to_thread.run_sync(
+                process_query,
+                request,
+                await request.body(),
+                limiter=self._capacity_limiter,
+            ),
         )
 
-        # if nnresult["embeddings"] is not None:
-        #     nnresult["embeddings"] = [
-        #         [cast(Embedding, embedding).tolist() for embedding in result]
-        #         for result in nnresult["embeddings"]
-        #     ]
+        if nnresult["embeddings"] is not None:
+            nnresult["embeddings"] = [
+                [cast(Embedding, embedding).tolist() for embedding in result]
+                for result in nnresult["embeddings"]
+            ]
 
         return nnresult
 
