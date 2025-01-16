@@ -1177,7 +1177,7 @@ class FastAPI(Server):
             ),
         )
 
-    @trace_method("FastAPI.get_nearest_neighbors", OpenTelemetryGranularity.OPERATION)
+    # @trace_method("FastAPI.get_nearest_neighbors", OpenTelemetryGranularity.OPERATION)
     # @rate_limit
     async def get_nearest_neighbors(
         self,
