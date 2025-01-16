@@ -9,6 +9,8 @@ from typing import (
     TypeVar,
     Tuple,
 )
+import aiohttp
+import os
 import fastapi
 import orjson
 from anyio import (
