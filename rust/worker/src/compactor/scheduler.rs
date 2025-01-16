@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::str::FromStr;
 
+use chroma_sysdb::SysDb;
 use chroma_types::CollectionUuid;
 use figment::providers::Env;
 use figment::Figment;
@@ -14,7 +15,6 @@ use crate::log::log::CollectionInfo;
 use crate::log::log::CollectionRecord;
 use crate::log::log::Log;
 use crate::memberlist::Memberlist;
-use crate::sysdb::sysdb::SysDb;
 
 pub(crate) struct Scheduler {
     my_ip: String,
@@ -248,7 +248,7 @@ mod tests {
     use crate::compactor::scheduler_policy::LasCompactionTimeSchedulerPolicy;
     use crate::log::log::InMemoryLog;
     use crate::log::log::InternalLogRecord;
-    use crate::sysdb::test_sysdb::TestSysDb;
+    use chroma_sysdb::TestSysDb;
     use chroma_types::{Collection, CollectionUuid, LogRecord, Operation, OperationRecord};
 
     #[tokio::test]
@@ -315,6 +315,7 @@ mod tests {
             database: "database_1".to_string(),
             log_position: 0,
             version: 0,
+            total_records_post_compaction: 0,
         };
 
         let tenant_2 = "tenant_2".to_string();
@@ -327,6 +328,7 @@ mod tests {
             database: "database_2".to_string(),
             log_position: 0,
             version: 0,
+            total_records_post_compaction: 0,
         };
         match *sysdb {
             SysDb::Test(ref mut sysdb) => {
@@ -539,6 +541,7 @@ mod tests {
             database: "database_1".to_string(),
             log_position: 0,
             version: 0,
+            total_records_post_compaction: 0,
         };
 
         match *sysdb {
