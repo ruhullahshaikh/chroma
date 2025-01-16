@@ -15,6 +15,7 @@ classifiers = [
   "Operating System :: OS Independent",
 ]
 dependencies = [
+  'aiohttp >= 3.11.11',
   'build >= 1.0.3',
   'pydantic >= 1.9',
   'chroma-hnswlib==0.7.6',

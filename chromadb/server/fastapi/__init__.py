@@ -182,6 +182,42 @@ class ChromaAPIRouter(fastapi.APIRouter):  # type: ignore
         kwargs["include_in_schema"] = include_in_schema(path)
         super().add_api_route(path, *args, **kwargs)
 
+class AsyncAuthClass():
+
+    def __init__(self):
+        conn = aiohttp.TCPConnector(limit_per_host=1000, limit=1000)
+        self.async_session = aiohttp.ClientSession(connector=conn)
+        self.api_url = os.environ.get("CHROMA_AUTHN_CONFIG_API_HOST", "http://dashboard-api.chroma-management.svc.cluster.local:8002")
+        self.api_key = os.environ.get("CHROMA_AUTHN_CONFIG_API_KEY", "fake-key")
+
+    async def check_api_key(self, token: str):
+        async with self.async_session.post(
+            f"{self.api_url}/api/v1/check_api_key",
+            headers={"x-chroma-data-plane-api-key": self.api_key},
+            json={"apiKey": token},
+        ) as response:
+            return await response.json(), response.status
+
+    async def authenticate_or_raise(self, headers: Dict[str, str]) -> UserIdentity:
+        try:
+            data, status = await self.check_api_key(headers["x-chroma-token"])
+            if status == 200:
+                return UserIdentity(
+                    user_id=data["identity"],
+                    tenant=data["team"],
+                    databases=list(
+                        set(
+                            p["database"]
+                            for p in data["permissions"]
+                            if "database" in p and p["database"] is not None
+                        )
+                    ),
+                    attributes=data["permissions"],
+                )
+
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        except Exception as e:
+            raise HTTPException(status_code=401, detail="Unauthorized") from e
 
 class FastAPI(Server):
     def __init__(self, settings: Settings):
@@ -199,6 +235,7 @@ class FastAPI(Server):
             settings.chroma_server_thread_pool_size
         )
         self._quota_enforcer = self._system.require(QuotaEnforcer)
+        self._async_auther = AsyncAuthClass()
         self._system.start()
 
         # self._app.middleware("http")(check_http_version_middleware)
@@ -1178,6 +1215,26 @@ class FastAPI(Server):
             ),
         )
 
+    async def async_auth_query(
+        self,
+        headers: Headers,
+        action: AuthzAction,
+        tenant: Optional[str],
+        database: Optional[str],
+        collection: Optional[str],
+    ) -> None:
+        user_identity = await self._async_auther.authenticate_or_raise(headers)
+        if not self.authz_provider:
+            return
+
+        authz_resource = AuthzResource(
+            tenant=tenant,
+            database=database,
+            collection=collection,
+        )
+
+        self.authz_provider.authorize_or_raise(user_identity, action, authz_resource)
+
     # @trace_method("FastAPI.get_nearest_neighbors", OpenTelemetryGranularity.OPERATION)
     # @rate_limit
     async def get_nearest_neighbors(
@@ -1187,17 +1244,25 @@ class FastAPI(Server):
         collection_id: str,
         request: Request,
     ) -> QueryResult:
+        await self.async_auth_query(
+            request.headers,
+            AuthzAction.QUERY,
+            tenant,
+            database_name,
+            collection_id
+        )
+        
         # @trace_method("internal.get_nearest_neighbors", OpenTelemetryGranularity.OPERATION)
         def process_query(request: Request, raw_body: bytes) -> QueryResult | None:
             # query = validate_model(QueryEmbedding, orjson.loads(raw_body))
 
-            self.sync_auth_request(
-                request.headers,
-                AuthzAction.QUERY,
-                tenant,
-                database_name,
-                collection_id,
-            )
+            # self.sync_auth_request(
+            #     request.headers,
+            #     AuthzAction.QUERY,
+            #     tenant,
+            #     database_name,
+            #     collection_id,
+            # )
             # self._set_request_context(request=request)
             # add_attributes_to_current_span({"tenant": tenant})
 
