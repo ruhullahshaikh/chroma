@@ -474,10 +474,10 @@ class FastAPI(Server):
             self.sync_auth_request, *(headers, action, tenant, database, collection)
         )
 
-    @trace_method(
-        "FastAPI.sync_auth_request",
-        OpenTelemetryGranularity.OPERATION,
-    )
+    # @trace_method(
+    #     "FastAPI.sync_auth_request",
+    #     OpenTelemetryGranularity.OPERATION,
+    # )
     def sync_auth_request(
         self,
         headers: Headers,
@@ -492,13 +492,13 @@ class FastAPI(Server):
         be authorized (with the configured providers), raises an HTTP 401.
         """
         if not self.authn_provider:
-            add_attributes_to_current_span(
-                {
-                    "tenant": tenant,
-                    "database": database,
-                    "collection": collection,
-                }
-            )
+            # add_attributes_to_current_span(
+            #     {
+            #         "tenant": tenant,
+            #         "database": database,
+            #         "collection": collection,
+            #     }
+            # )
             return
 
         user_identity = self.authn_provider.authenticate_or_raise(dict(headers))
@@ -513,13 +513,13 @@ class FastAPI(Server):
         )
 
         self.authz_provider.authorize_or_raise(user_identity, action, authz_resource)
-        add_attributes_to_current_span(
-            {
-                "tenant": tenant,
-                "database": database,
-                "collection": collection,
-            }
-        )
+        # add_attributes_to_current_span(
+        #     {
+        #         "tenant": tenant,
+        #         "database": database,
+        #         "collection": collection,
+        #     }
+        # )
         return
 
     @trace_method("FastAPI.get_user_identity", OpenTelemetryGranularity.OPERATION)
@@ -1191,13 +1191,13 @@ class FastAPI(Server):
         def process_query(request: Request, raw_body: bytes) -> QueryResult | None:
             # query = validate_model(QueryEmbedding, orjson.loads(raw_body))
 
-            # self.sync_auth_request(
-            #     request.headers,
-            #     AuthzAction.QUERY,
-            #     tenant,
-            #     database_name,
-            #     collection_id,
-            # )
+            self.sync_auth_request(
+                request.headers,
+                AuthzAction.QUERY,
+                tenant,
+                database_name,
+                collection_id,
+            )
             # self._set_request_context(request=request)
             # add_attributes_to_current_span({"tenant": tenant})
 
