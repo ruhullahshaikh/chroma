@@ -1270,20 +1270,19 @@ class FastAPI(Server):
 
             np_embeddings = convert_list_embeddings_to_np(query.query_embeddings) if query.query_embeddings else None
 
-            # return self._api._query(
-            #     collection_id=_uuid(collection_id),
-            #     query_embeddings=cast(
-            #         Embeddings,
-            #         np_embeddings,
-            #     ),
-            #     n_results=query.n_results,
-            #     where=query.where,
-            #     where_document=query.where_document,
-            #     include=query.include,
-            #     tenant=tenant,
-            #     database=database_name,
-            # )
-            return None
+            return self._api._query(
+                collection_id=_uuid(collection_id),
+                query_embeddings=cast(
+                    Embeddings,
+                    np_embeddings,
+                ),
+                n_results=query.n_results,
+                where=query.where,
+                where_document=query.where_document,
+                include=query.include,
+                tenant=tenant,
+                database=database_name,
+            )
 
         # nnresult = cast(
         #     QueryResult,

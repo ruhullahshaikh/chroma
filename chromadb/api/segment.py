@@ -749,7 +749,7 @@ class SegmentAPI(ServerAPI):
         add_attributes_to_current_span({"collection_id": str(collection_id)})
         return self._executor.count(CountPlan(self._scan(collection_id)))
 
-    @trace_method("SegmentAPI._query", OpenTelemetryGranularity.OPERATION)
+    # @trace_method("SegmentAPI._query", OpenTelemetryGranularity.OPERATION)
     # We retry on version mismatch errors because the version of the collection
     # may have changed between the time we got the version and the time we
     # actually query the collection on the FE. We are fine with fixed
@@ -757,14 +757,14 @@ class SegmentAPI(ServerAPI):
     # network issues or other transient issues. It is a result of the
     # collection being updated between the time we got the version and
     # the time we actually query the collection on the FE.
-    @retry(  # type: ignore[misc]
-        retry=retry_if_exception(lambda e: isinstance(e, VersionMismatchError)),
-        wait=wait_fixed(2),
-        stop=stop_after_attempt(5),
-        reraise=True,
-    )
+    # @retry(  # type: ignore[misc]
+    #     retry=retry_if_exception(lambda e: isinstance(e, VersionMismatchError)),
+    #     wait=wait_fixed(2),
+    #     stop=stop_after_attempt(5),
+    #     reraise=True,
+    # )
     @override
-    @rate_limit
+    # @rate_limit
     def _query(
         self,
         collection_id: UUID,
@@ -776,28 +776,28 @@ class SegmentAPI(ServerAPI):
         tenant: str = DEFAULT_TENANT,
         database: str = DEFAULT_DATABASE,
     ) -> QueryResult:
-        add_attributes_to_current_span(
-            {
-                "collection_id": str(collection_id),
-                "n_results": n_results,
-                "where": str(where),
-            }
-        )
+        # add_attributes_to_current_span(
+        #     {
+        #         "collection_id": str(collection_id),
+        #         "n_results": n_results,
+        #         "where": str(where),
+        #     }
+        # )
 
-        query_amount = len(query_embeddings)
-        self._product_telemetry_client.capture(
-            CollectionQueryEvent(
-                collection_uuid=str(collection_id),
-                query_amount=query_amount,
-                n_results=n_results,
-                with_metadata_filter=query_amount if where is not None else 0,
-                with_document_filter=query_amount if where_document is not None else 0,
-                include_metadatas=query_amount if "metadatas" in include else 0,
-                include_documents=query_amount if "documents" in include else 0,
-                include_uris=query_amount if "uris" in include else 0,
-                include_distances=query_amount if "distances" in include else 0,
-            )
-        )
+        # query_amount = len(query_embeddings)
+        # self._product_telemetry_client.capture(
+        #     CollectionQueryEvent(
+        #         collection_uuid=str(collection_id),
+        #         query_amount=query_amount,
+        #         n_results=n_results,
+        #         with_metadata_filter=query_amount if where is not None else 0,
+        #         with_document_filter=query_amount if where_document is not None else 0,
+        #         include_metadatas=query_amount if "metadatas" in include else 0,
+        #         include_documents=query_amount if "documents" in include else 0,
+        #         include_uris=query_amount if "uris" in include else 0,
+        #         include_distances=query_amount if "distances" in include else 0,
+        #     )
+        # )
 
         # TODO: Replace with unified validation
         if where is not None:
@@ -809,29 +809,30 @@ class SegmentAPI(ServerAPI):
         for embedding in query_embeddings:
             self._validate_dimension(scan.collection, len(embedding), update=False)
 
-        self._quota_enforcer.enforce(
-            action=Action.QUERY,
-            tenant=tenant,
-            where=where,
-            where_document=where_document,
-            query_embeddings=query_embeddings,
-            n_results=n_results,
-        )
+        # self._quota_enforcer.enforce(
+        #     action=Action.QUERY,
+        #     tenant=tenant,
+        #     where=where,
+        #     where_document=where_document,
+        #     query_embeddings=query_embeddings,
+        #     n_results=n_results,
+        # )
 
-        return self._executor.knn(
-            KNNPlan(
-                scan,
-                KNN(query_embeddings, n_results),
-                Filter(None, where, where_document),
-                Projection(
-                    IncludeEnum.documents in include,
-                    IncludeEnum.embeddings in include,
-                    IncludeEnum.metadatas in include,
-                    IncludeEnum.distances in include,
-                    IncludeEnum.uris in include,
-                ),
-            )
-        )
+        # return self._executor.knn(
+        #     KNNPlan(
+        #         scan,
+        #         KNN(query_embeddings, n_results),
+        #         Filter(None, where, where_document),
+        #         Projection(
+        #             IncludeEnum.documents in include,
+        #             IncludeEnum.embeddings in include,
+        #             IncludeEnum.metadatas in include,
+        #             IncludeEnum.distances in include,
+        #             IncludeEnum.uris in include,
+        #         ),
+        #     )
+        # )
+        return None
 
     @trace_method("SegmentAPI._peek", OpenTelemetryGranularity.OPERATION)
     @override
