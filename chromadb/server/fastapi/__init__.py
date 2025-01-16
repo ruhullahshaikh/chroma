@@ -1178,7 +1178,7 @@ class FastAPI(Server):
         )
 
     @trace_method("FastAPI.get_nearest_neighbors", OpenTelemetryGranularity.OPERATION)
-    @rate_limit
+    # @rate_limit
     async def get_nearest_neighbors(
         self,
         tenant: str,
@@ -1186,53 +1186,55 @@ class FastAPI(Server):
         collection_id: str,
         request: Request,
     ) -> QueryResult:
-        @trace_method("internal.get_nearest_neighbors", OpenTelemetryGranularity.OPERATION)
-        def process_query(request: Request, raw_body: bytes) -> QueryResult:
-            query = validate_model(QueryEmbedding, orjson.loads(raw_body))
+        # @trace_method("internal.get_nearest_neighbors", OpenTelemetryGranularity.OPERATION)
+        # def process_query(request: Request, raw_body: bytes) -> QueryResult:
+        #     query = validate_model(QueryEmbedding, orjson.loads(raw_body))
 
-            self.sync_auth_request(
-                request.headers,
-                AuthzAction.QUERY,
-                tenant,
-                database_name,
-                collection_id,
-            )
-            self._set_request_context(request=request)
-            add_attributes_to_current_span({"tenant": tenant})
+        #     self.sync_auth_request(
+        #         request.headers,
+        #         AuthzAction.QUERY,
+        #         tenant,
+        #         database_name,
+        #         collection_id,
+        #     )
+        #     self._set_request_context(request=request)
+        #     add_attributes_to_current_span({"tenant": tenant})
 
-            return self._api._query(
-                collection_id=_uuid(collection_id),
-                query_embeddings=cast(
-                    Embeddings,
-                    convert_list_embeddings_to_np(query.query_embeddings)
-                    if query.query_embeddings
-                    else None,
-                ),
-                n_results=query.n_results,
-                where=query.where,
-                where_document=query.where_document,
-                include=query.include,
-                tenant=tenant,
-                database=database_name,
-            )
+        #     return self._api._query(
+        #         collection_id=_uuid(collection_id),
+        #         query_embeddings=cast(
+        #             Embeddings,
+        #             convert_list_embeddings_to_np(query.query_embeddings)
+        #             if query.query_embeddings
+        #             else None,
+        #         ),
+        #         n_results=query.n_results,
+        #         where=query.where,
+        #         where_document=query.where_document,
+        #         include=query.include,
+        #         tenant=tenant,
+        #         database=database_name,
+        #     )
 
-        nnresult = cast(
-            QueryResult,
-            await to_thread.run_sync(
-                process_query,
-                request,
-                await request.body(),
-                limiter=self._capacity_limiter,
-            ),
-        )
+        # nnresult = cast(
+        #     QueryResult,
+        #     await to_thread.run_sync(
+        #         process_query,
+        #         request,
+        #         await request.body(),
+        #         limiter=self._capacity_limiter,
+        #     ),
+        # )
 
-        if nnresult["embeddings"] is not None:
-            nnresult["embeddings"] = [
-                [cast(Embedding, embedding).tolist() for embedding in result]
-                for result in nnresult["embeddings"]
-            ]
+        # if nnresult["embeddings"] is not None:
+        #     nnresult["embeddings"] = [
+        #         [cast(Embedding, embedding).tolist() for embedding in result]
+        #         for result in nnresult["embeddings"]
+        #     ]
 
-        return nnresult
+        # return nnresult
+
+        return QueryResult(ids=[], embeddings=None, documents=None, uris=None, data=None, metadatas=None, distances=None, included=[])
 
     async def pre_flight_checks(self) -> Dict[str, Any]:
         def process_pre_flight_checks() -> Dict[str, Any]:
