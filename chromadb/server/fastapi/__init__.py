@@ -1188,7 +1188,7 @@ class FastAPI(Server):
     ) -> QueryResult:
 
         # @trace_method("internal.get_nearest_neighbors", OpenTelemetryGranularity.OPERATION)
-        # def process_query(request: Request, raw_body: bytes) -> QueryResult | None:
+        def process_query(request: Request, raw_body: bytes) -> QueryResult | None:
             # query = validate_model(QueryEmbedding, orjson.loads(raw_body))
 
             # self.sync_auth_request(
@@ -1216,7 +1216,7 @@ class FastAPI(Server):
             #     tenant=tenant,
             #     database=database_name,
             # )
-            # return None
+            return None
 
         # nnresult = cast(
         #     QueryResult,
@@ -1228,14 +1228,12 @@ class FastAPI(Server):
         #     ),
         # )
 
-        await request.body()
-
-        # await to_thread.run_sync(
-        #     process_query,
-        #     request,
-        #     await request.body(),
-        #     limiter=self._capacity_limiter,
-        # ),
+        await to_thread.run_sync(
+            process_query,
+            request,
+            await request.body(),
+            limiter=self._capacity_limiter,
+        ),
 
         # if nnresult["embeddings"] is not None:
         #     nnresult["embeddings"] = [
