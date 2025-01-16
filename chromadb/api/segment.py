@@ -916,12 +916,15 @@ class SegmentAPI(ServerAPI):
 
     @trace_method("SegmentAPI._scan", OpenTelemetryGranularity.OPERATION)
     def _scan(self, collection_id: UUID) -> Scan:
-        if collection_id not in self._collection_version_cache or self._collection_version_cache[collection_id][0] + timedelta(seconds=10) < datetime.now():
-            fresh_collection_version = self._sysdb.get_collection_with_segments(
-                collection_id
-            )
-            self._collection_version_cache[collection_id] = (datetime.now(), fresh_collection_version)
-        collection_and_segments = self._collection_version_cache[collection_id][1]
+        # if collection_id not in self._collection_version_cache or self._collection_version_cache[collection_id][0] + timedelta(seconds=10) < datetime.now():
+            # fresh_collection_version = self._sysdb.get_collection_with_segments(
+            #     collection_id
+            # )
+            # self._collection_version_cache[collection_id] = (datetime.now(), fresh_collection_version)
+        # collection_and_segments = self._collection_version_cache[collection_id][1]
+        collection_and_segments = self._sysdb.get_collection_with_segments(
+            collection_id
+        )
         # For now collection should have exactly one segment per scope:
         # - Local scopes: vector, metadata
         # - Distributed scopes: vector, metadata, record
