@@ -1254,9 +1254,26 @@ class FastAPI(Server):
             collection_id
         )
         
+        query = validate_model(QueryEmbedding, orjson.loads(await request.body()))
+        np_embeddings = convert_list_embeddings_to_np(query.query_embeddings) if query.query_embeddings else None
+
+        nnresult = await self._api._async_query(
+            collection_id=_uuid(collection_id),
+            query_embeddings=cast(
+                Embeddings,
+                np_embeddings,
+            ),
+            n_results=query.n_results,
+            where=query.where,
+            where_document=query.where_document,
+            include=query.include,
+            tenant=tenant,
+            database=database_name,
+        )
+        
         # @trace_method("internal.get_nearest_neighbors", OpenTelemetryGranularity.OPERATION)
-        def process_query(request: Request, raw_body: bytes) -> QueryResult | None:
-            query = validate_model(QueryEmbedding, orjson.loads(raw_body))
+        # def process_query(request: Request, raw_body: bytes) -> QueryResult | None:
+            # query = validate_model(QueryEmbedding, orjson.loads(raw_body))
 
             # self.sync_auth_request(
             #     request.headers,
@@ -1268,21 +1285,21 @@ class FastAPI(Server):
             # self._set_request_context(request=request)
             # add_attributes_to_current_span({"tenant": tenant})
 
-            np_embeddings = convert_list_embeddings_to_np(query.query_embeddings) if query.query_embeddings else None
+            # np_embeddings = convert_list_embeddings_to_np(query.query_embeddings) if query.query_embeddings else None
 
-            return self._api._query(
-                collection_id=_uuid(collection_id),
-                query_embeddings=cast(
-                    Embeddings,
-                    np_embeddings,
-                ),
-                n_results=query.n_results,
-                where=query.where,
-                where_document=query.where_document,
-                include=query.include,
-                tenant=tenant,
-                database=database_name,
-            )
+            # return self._api._query(
+            #     collection_id=_uuid(collection_id),
+            #     query_embeddings=cast(
+            #         Embeddings,
+            #         np_embeddings,
+            #     ),
+            #     n_results=query.n_results,
+            #     where=query.where,
+            #     where_document=query.where_document,
+            #     include=query.include,
+            #     tenant=tenant,
+            #     database=database_name,
+            # )
 
         # nnresult = cast(
         #     QueryResult,
@@ -1293,13 +1310,6 @@ class FastAPI(Server):
         #         limiter=self._capacity_limiter,
         #     ),
         # )
-
-        await to_thread.run_sync(
-            process_query,
-            request,
-            await request.body(),
-            limiter=self._capacity_limiter,
-        ),
 
         # if nnresult["embeddings"] is not None:
         #     nnresult["embeddings"] = [

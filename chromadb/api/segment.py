@@ -749,6 +749,41 @@ class SegmentAPI(ServerAPI):
         add_attributes_to_current_span({"collection_id": str(collection_id)})
         return self._executor.count(CountPlan(self._scan(collection_id)))
 
+    async def _async_query(
+        self,
+        collection_id: UUID,
+        query_embeddings: Embeddings,
+        n_results: int = 10,
+        where: Optional[Where] = None,
+        where_document: Optional[WhereDocument] = None,
+        include: Include = ["documents", "metadatas", "distances"],  # type: ignore[list-item]
+        tenant: str = DEFAULT_TENANT,
+        database: str = DEFAULT_DATABASE,
+    ) -> QueryResult:
+        if where is not None:
+            validate_where(where)
+        if where_document is not None:
+            validate_where_document(where_document)
+
+        # scan = self._scan(collection_id)
+        collection_and_segments = await self._sysdb.async_get_collection_with_segments(
+            collection_id
+        )
+        scope_to_segment = {
+            segment["scope"]: segment for segment in collection_and_segments["segments"]
+        }
+        scan = Scan(
+            collection=collection_and_segments["collection"],
+            knn=scope_to_segment[t.SegmentScope.VECTOR],
+            metadata=scope_to_segment[t.SegmentScope.METADATA],
+            # Local chroma do not have record segment, and this is not used by the local executor
+            record=scope_to_segment.get(t.SegmentScope.RECORD, None),  # type: ignore[arg-type]
+        )
+        
+        for embedding in query_embeddings:
+            self._validate_dimension(scan.collection, len(embedding), update=False)
+        return None
+
     # @trace_method("SegmentAPI._query", OpenTelemetryGranularity.OPERATION)
     # We retry on version mismatch errors because the version of the collection
     # may have changed between the time we got the version and the time we
@@ -914,7 +949,7 @@ class SegmentAPI(ServerAPI):
             )
         return collections[0]
 
-    @trace_method("SegmentAPI._scan", OpenTelemetryGranularity.OPERATION)
+    # @trace_method("SegmentAPI._scan", OpenTelemetryGranularity.OPERATION)
     def _scan(self, collection_id: UUID) -> Scan:
         # if collection_id not in self._collection_version_cache or self._collection_version_cache[collection_id][0] + timedelta(seconds=10) < datetime.now():
             # fresh_collection_version = self._sysdb.get_collection_with_segments(

@@ -64,6 +64,7 @@ class GrpcSysDB(SysDB):
 
     _sys_db_stub: SysDBStub
     _channel: grpc.Channel
+    _async_sysdb_stub: SysDBStub
     _stub_pool: List[grpc.Channel]
     _coordinator_url: str
     _coordinator_port: int
@@ -89,12 +90,18 @@ class GrpcSysDB(SysDB):
         self._sys_db_stub = SysDBStub(self._channel)  # type: ignore
 
         self._stub_pool = []
-        for id in range(10):
-            channel = grpc.insecure_channel(
-                f"{self._coordinator_url}:{self._coordinator_port}",
-                options=[("grpc.max_concurrent_streams", 1000), ("grpc.use_local_subchannel_pool", 1), ("stub_id", id)],
-            )
-            self._stub_pool.append(SysDBStub(channel))
+        # for id in range(10):
+        #     channel = grpc.insecure_channel(
+        #         f"{self._coordinator_url}:{self._coordinator_port}",
+        #         options=[("grpc.max_concurrent_streams", 1000), ("grpc.use_local_subchannel_pool", 1), ("stub_id", id)],
+        #     )
+        #     self._stub_pool.append(SysDBStub(channel))
+
+        async_channel = grpc.aio.insecure_channel(
+            f"{self._coordinator_url}:{self._coordinator_port}",
+            options=[("grpc.max_concurrent_streams", 2000)],
+        )
+        self._async_sysdb_stub = SysDBStub(async_channel)
             
         return super().start()
 
@@ -429,6 +436,27 @@ class GrpcSysDB(SysDB):
                 f"Failed to get collections with id {id}, name {name}, tenant {tenant}, database {database} due to error: {e}"
             )
             raise InternalError()
+
+    async def async_get_collection_with_segments(
+        self, collection_id: UUID
+    ) -> CollectionAndSegments:
+        try:
+            request = GetCollectionWithSegmentsRequest(id=collection_id.hex)
+            response: GetCollectionWithSegmentsResponse = (
+                await self._async_sysdb_stub.GetCollectionWithSegments(request)
+            )
+            return CollectionAndSegments(
+                collection=from_proto_collection(response.collection),
+                segments=[from_proto_segment(segment) for segment in response.segments],
+            )
+        except grpc.RpcError as e:
+            if e.code() == grpc.StatusCode.NOT_FOUND:
+                raise NotFoundError()
+            logger.error(
+                f"Failed to get collection {collection_id} and its segments due to error: {e}"
+            )
+            raise InternalError()
+        
 
     @trace_method("SysDB.get_collection_with_segments", OpenTelemetryGranularity.OPERATION)
     @overrides
