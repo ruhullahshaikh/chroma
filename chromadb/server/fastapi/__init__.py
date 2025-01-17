@@ -239,6 +239,7 @@ class FastAPI(Server):
         )
         self._quota_enforcer = self._system.require(QuotaEnforcer)
         self._async_auther = AsyncAuthClass()
+        self._auth_cache = set()
         self._system.start()
 
         # self._app.middleware("http")(check_http_version_middleware)
@@ -1247,10 +1248,6 @@ class FastAPI(Server):
         collection_id: str,
         request: Request,
     ) -> QueryResult:
-        await self._api._sysdb.async_get_collection_with_segments(
-            uuid.UUID(collection_id)
-        )
-
         # await self.async_auth_query(
         #     request.headers,
         #     AuthzAction.QUERY,
@@ -1277,54 +1274,57 @@ class FastAPI(Server):
         # )
         
         # @trace_method("internal.get_nearest_neighbors", OpenTelemetryGranularity.OPERATION)
-        # def process_query(request: Request, raw_body: bytes) -> QueryResult | None:
-            # query = validate_model(QueryEmbedding, orjson.loads(raw_body))
+        def process_query(request: Request, raw_body: bytes) -> QueryResult | None:
+            query = validate_model(QueryEmbedding, orjson.loads(raw_body))
 
-            # self.sync_auth_request(
-            #     request.headers,
-            #     AuthzAction.QUERY,
-            #     tenant,
-            #     database_name,
-            #     collection_id,
-            # )
+            auth_key = (request.headers["x-chroma-token"], tenant, database_name, collection_id)
+            if auth_key not in self._auth_cache:
+                self.sync_auth_request(
+                    request.headers,
+                    AuthzAction.QUERY,
+                    tenant,
+                    database_name,
+                    collection_id,
+                )
+                self._auth_cache.add(auth_key)
             # self._set_request_context(request=request)
             # add_attributes_to_current_span({"tenant": tenant})
 
-            # np_embeddings = convert_list_embeddings_to_np(query.query_embeddings) if query.query_embeddings else None
+            np_embeddings = convert_list_embeddings_to_np(query.query_embeddings) if query.query_embeddings else None
 
-            # return self._api._query(
-            #     collection_id=_uuid(collection_id),
-            #     query_embeddings=cast(
-            #         Embeddings,
-            #         np_embeddings,
-            #     ),
-            #     n_results=query.n_results,
-            #     where=query.where,
-            #     where_document=query.where_document,
-            #     include=query.include,
-            #     tenant=tenant,
-            #     database=database_name,
-            # )
+            return self._api._query(
+                collection_id=_uuid(collection_id),
+                query_embeddings=cast(
+                    Embeddings,
+                    np_embeddings,
+                ),
+                n_results=query.n_results,
+                where=query.where,
+                where_document=query.where_document,
+                include=query.include,
+                tenant=tenant,
+                database=database_name,
+            )
 
-        # nnresult = cast(
-        #     QueryResult,
-        #     await to_thread.run_sync(
-        #         process_query,
-        #         request,
-        #         await request.body(),
-        #         limiter=self._capacity_limiter,
-        #     ),
-        # )
+        nnresult = cast(
+            QueryResult,
+            await to_thread.run_sync(
+                process_query,
+                request,
+                await request.body(),
+                limiter=self._capacity_limiter,
+            ),
+        )
 
-        # if nnresult["embeddings"] is not None:
-        #     nnresult["embeddings"] = [
-        #         [cast(Embedding, embedding).tolist() for embedding in result]
-        #         for result in nnresult["embeddings"]
-        #     ]
+        if nnresult["embeddings"] is not None:
+            nnresult["embeddings"] = [
+                [cast(Embedding, embedding).tolist() for embedding in result]
+                for result in nnresult["embeddings"]
+            ]
 
-        # return nnresult
+        return nnresult
 
-        return QueryResult(ids=[], embeddings=None, documents=None, uris=None, data=None, metadatas=None, distances=None, included=[])
+        # return QueryResult(ids=[], embeddings=None, documents=None, uris=None, data=None, metadatas=None, distances=None, included=[])
 
     async def pre_flight_checks(self) -> Dict[str, Any]:
         def process_pre_flight_checks() -> Dict[str, Any]:
