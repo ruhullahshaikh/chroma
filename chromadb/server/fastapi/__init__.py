@@ -1246,30 +1246,34 @@ class FastAPI(Server):
         collection_id: str,
         request: Request,
     ) -> QueryResult:
-        await self.async_auth_query(
-            request.headers,
-            AuthzAction.QUERY,
-            tenant,
-            database_name,
+        await self._api._sysdb.async_get_collection_with_segments(
             collection_id
         )
-        
-        query = validate_model(QueryEmbedding, orjson.loads(await request.body()))
-        np_embeddings = convert_list_embeddings_to_np(query.query_embeddings) if query.query_embeddings else None
 
-        nnresult = await self._api._async_query(
-            collection_id=_uuid(collection_id),
-            query_embeddings=cast(
-                Embeddings,
-                np_embeddings,
-            ),
-            n_results=query.n_results,
-            where=query.where,
-            where_document=query.where_document,
-            include=query.include,
-            tenant=tenant,
-            database=database_name,
-        )
+        # await self.async_auth_query(
+        #     request.headers,
+        #     AuthzAction.QUERY,
+        #     tenant,
+        #     database_name,
+        #     collection_id
+        # )
+        
+        # query = validate_model(QueryEmbedding, orjson.loads(await request.body()))
+        # np_embeddings = convert_list_embeddings_to_np(query.query_embeddings) if query.query_embeddings else None
+
+        # nnresult = await self._api._async_query(
+        #     collection_id=_uuid(collection_id),
+        #     query_embeddings=cast(
+        #         Embeddings,
+        #         np_embeddings,
+        #     ),
+        #     n_results=query.n_results,
+        #     where=query.where,
+        #     where_document=query.where_document,
+        #     include=query.include,
+        #     tenant=tenant,
+        #     database=database_name,
+        # )
         
         # @trace_method("internal.get_nearest_neighbors", OpenTelemetryGranularity.OPERATION)
         # def process_query(request: Request, raw_body: bytes) -> QueryResult | None:
