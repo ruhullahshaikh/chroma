@@ -1239,7 +1239,7 @@ class FastAPI(Server):
 
         self.authz_provider.authorize_or_raise(user_identity, action, authz_resource)
 
-    @trace_method("FastAPI.get_nearest_neighbors", OpenTelemetryGranularity.OPERATION)
+    # @trace_method("FastAPI.get_nearest_neighbors", OpenTelemetryGranularity.OPERATION)
     # @rate_limit
     async def get_nearest_neighbors(
         self,
@@ -1248,6 +1248,8 @@ class FastAPI(Server):
         collection_id: str,
         request: Request,
     ) -> QueryResult:
+        from chromadb.telemetry.opentelemetry import tracer
+        span = tracer.start_span("FastAPI.get_nearest_neighbours")
         # await self.async_auth_query(
         #     request.headers,
         #     AuthzAction.QUERY,
@@ -1321,6 +1323,8 @@ class FastAPI(Server):
                 [cast(Embedding, embedding).tolist() for embedding in result]
                 for result in nnresult["embeddings"]
             ]
+
+        span.end()
 
         return nnresult
 
