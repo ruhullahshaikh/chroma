@@ -853,21 +853,20 @@ class SegmentAPI(ServerAPI):
         #     n_results=n_results,
         # )
 
-        # return self._executor.knn(
-        #     KNNPlan(
-        #         scan,
-        #         KNN(query_embeddings, n_results),
-        #         Filter(None, where, where_document),
-        #         Projection(
-        #             IncludeEnum.documents in include,
-        #             IncludeEnum.embeddings in include,
-        #             IncludeEnum.metadatas in include,
-        #             IncludeEnum.distances in include,
-        #             IncludeEnum.uris in include,
-        #         ),
-        #     )
-        # )
-        return None
+        return self._executor.knn(
+            KNNPlan(
+                scan,
+                KNN(query_embeddings, n_results),
+                Filter(None, where, where_document),
+                Projection(
+                    IncludeEnum.documents in include,
+                    IncludeEnum.embeddings in include,
+                    IncludeEnum.metadatas in include,
+                    IncludeEnum.distances in include,
+                    IncludeEnum.uris in include,
+                ),
+            )
+        )
 
     @trace_method("SegmentAPI._peek", OpenTelemetryGranularity.OPERATION)
     @override

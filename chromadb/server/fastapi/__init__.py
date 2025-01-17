@@ -1306,32 +1306,23 @@ class FastAPI(Server):
                 database=database_name,
             )
 
-        return await to_thread.run_sync(
-            process_query,
-            request,
-            await request.body(),
-            limiter=self._capacity_limiter,
+        nnresult = cast(
+            QueryResult,
+            await to_thread.run_sync(
+                process_query,
+                request,
+                await request.body(),
+                limiter=self._capacity_limiter,
+            ),
         )
-        
-        # nnresult = cast(
-        #     QueryResult,
-        #     await to_thread.run_sync(
-        #         process_query,
-        #         request,
-        #         await request.body(),
-        #         limiter=self._capacity_limiter,
-        #     ),
-        # )
 
-        # if nnresult["embeddings"] is not None:
-        #     nnresult["embeddings"] = [
-        #         [cast(Embedding, embedding).tolist() for embedding in result]
-        #         for result in nnresult["embeddings"]
-        #     ]
+        if nnresult["embeddings"] is not None:
+            nnresult["embeddings"] = [
+                [cast(Embedding, embedding).tolist() for embedding in result]
+                for result in nnresult["embeddings"]
+            ]
 
-        # return nnresult
-
-        # return QueryResult(ids=[], embeddings=None, documents=None, uris=None, data=None, metadatas=None, distances=None, included=[])
+        return nnresult
 
     async def pre_flight_checks(self) -> Dict[str, Any]:
         def process_pre_flight_checks() -> Dict[str, Any]:
