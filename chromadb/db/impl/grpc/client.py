@@ -458,7 +458,7 @@ class GrpcSysDB(SysDB):
             raise InternalError()
         
 
-    @trace_method("SysDB.get_collection_with_segments", OpenTelemetryGranularity.OPERATION)
+    # @trace_method("SysDB.get_collection_with_segments", OpenTelemetryGranularity.OPERATION)
     @overrides
     def get_collection_with_segments(
         self, collection_id: UUID
@@ -466,7 +466,7 @@ class GrpcSysDB(SysDB):
         try:
             request = GetCollectionWithSegmentsRequest(id=collection_id.hex)
             response: GetCollectionWithSegmentsResponse = (
-                self._stub_pool[random.randint(0, len(self._stub_pool) - 1)].GetCollectionWithSegments(request)
+                self._sys_db_stub.GetCollectionWithSegments(request)
             )
             return CollectionAndSegments(
                 collection=from_proto_collection(response.collection),
