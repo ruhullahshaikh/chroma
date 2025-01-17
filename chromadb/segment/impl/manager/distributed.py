@@ -83,10 +83,10 @@ class DistributedSegmentManager(SegmentManager):
         segments = self._sysdb.get_segments(collection=collection_id)
         return [s["id"] for s in segments]
 
-    @trace_method(
-        "DistributedSegmentManager.get_endpoint",
-        OpenTelemetryGranularity.OPERATION_AND_SEGMENT,
-    )
+    # @trace_method(
+    #     "DistributedSegmentManager.get_endpoint",
+    #     OpenTelemetryGranularity.OPERATION_AND_SEGMENT,
+    # )
     def get_endpoints(self, segment: Segment, n: int) -> List[str]:
         return self._segment_directory.get_segment_endpoints(segment, n)
 
