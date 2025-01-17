@@ -1239,7 +1239,7 @@ class FastAPI(Server):
 
         self.authz_provider.authorize_or_raise(user_identity, action, authz_resource)
 
-    # @trace_method("FastAPI.get_nearest_neighbors", OpenTelemetryGranularity.OPERATION)
+    @trace_method("FastAPI.get_nearest_neighbors", OpenTelemetryGranularity.OPERATION)
     # @rate_limit
     async def get_nearest_neighbors(
         self,
