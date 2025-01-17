@@ -9,6 +9,7 @@ from typing import (
     TypeVar,
     Tuple,
 )
+import uuid
 import aiohttp
 import os
 import fastapi
@@ -1247,7 +1248,7 @@ class FastAPI(Server):
         request: Request,
     ) -> QueryResult:
         await self._api._sysdb.async_get_collection_with_segments(
-            collection_id
+            uuid.UUID(collection_id)
         )
 
         # await self.async_auth_query(
