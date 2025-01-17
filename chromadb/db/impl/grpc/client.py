@@ -54,6 +54,7 @@ from chromadb.types import (
 )
 from google.protobuf.empty_pb2 import Empty
 import grpc
+import random
 
 
 class GrpcSysDB(SysDB):
@@ -63,6 +64,7 @@ class GrpcSysDB(SysDB):
 
     _sys_db_stub: SysDBStub
     _channel: grpc.Channel
+    _stub_pool: List[grpc.Channel]
     _coordinator_url: str
     _coordinator_port: int
     _request_timeout_seconds: int
@@ -85,6 +87,15 @@ class GrpcSysDB(SysDB):
         interceptors = [OtelInterceptor(), RetryOnRpcErrorClientInterceptor()]
         self._channel = grpc.intercept_channel(self._channel, *interceptors)
         self._sys_db_stub = SysDBStub(self._channel)  # type: ignore
+
+        self._stub_pool = []
+        for _ in range(10):
+            channel = grpc.insecure_channel(
+                f"{self._coordinator_url}:{self._coordinator_port}",
+                options=[("grpc.max_concurrent_streams", 1000)],
+            )
+            self._stub_pool.append(SysDBStub(channel))
+            
         return super().start()
 
     @overrides
@@ -427,7 +438,7 @@ class GrpcSysDB(SysDB):
         try:
             request = GetCollectionWithSegmentsRequest(id=collection_id.hex)
             response: GetCollectionWithSegmentsResponse = (
-                self._sys_db_stub.GetCollectionWithSegments(request)
+                self._stub_pool[random.randint(0, len(self._stub_pool) - 1)].GetCollectionWithSegments(request)
             )
             return CollectionAndSegments(
                 collection=from_proto_collection(response.collection),
