@@ -89,10 +89,10 @@ class GrpcSysDB(SysDB):
         self._sys_db_stub = SysDBStub(self._channel)  # type: ignore
 
         self._stub_pool = []
-        for _ in range(10):
+        for id in range(10):
             channel = grpc.insecure_channel(
                 f"{self._coordinator_url}:{self._coordinator_port}",
-                options=[("grpc.max_concurrent_streams", 1000)],
+                options=[("grpc.max_concurrent_streams", 1000), ("grpc.use_local_subchannel_pool", 1), ("stub_id", id)],
             )
             self._stub_pool.append(SysDBStub(channel))
             
