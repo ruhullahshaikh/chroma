@@ -22,6 +22,8 @@ from chromadb.proto.coordinator_pb2 import (
     DeleteSegmentRequest,
     GetCollectionsRequest,
     GetCollectionsResponse,
+    GetCollectionSizeRequest,
+    GetCollectionSizeResponse,
     GetCollectionWithSegmentsRequest,
     GetCollectionWithSegmentsResponse,
     GetDatabaseRequest,
@@ -437,28 +439,21 @@ class GrpcSysDB(SysDB):
             )
             raise InternalError()
 
-    async def async_get_collection_with_segments(
-        self, collection_id: UUID
-    ) -> CollectionAndSegments:
+    @overrides
+    def get_collection_size(self, id: UUID) -> int:
         try:
-            request = GetCollectionWithSegmentsRequest(id=collection_id.hex)
-            response: GetCollectionWithSegmentsResponse = (
-                await self._async_sysdb_stub.GetCollectionWithSegments(request)
+            request = GetCollectionSizeRequest(id=id.hex)
+            response: GetCollectionSizeResponse = self._sys_db_stub.GetCollectionSize(
+                request
             )
-            return CollectionAndSegments(
-                collection=from_proto_collection(response.collection),
-                segments=[from_proto_segment(segment) for segment in response.segments],
-            )
+            return response.total_records_post_compaction
         except grpc.RpcError as e:
-            if e.code() == grpc.StatusCode.NOT_FOUND:
-                raise NotFoundError()
-            logger.error(
-                f"Failed to get collection {collection_id} and its segments due to error: {e}"
-            )
+            logger.error(f"Failed to get collection {id} size due to error: {e}")
             raise InternalError()
-        
 
-    # @trace_method("SysDB.get_collection_with_segments", OpenTelemetryGranularity.OPERATION)
+    # @trace_method(
+    #     "SysDB.get_collection_with_segments", OpenTelemetryGranularity.OPERATION
+    # )
     @overrides
     def get_collection_with_segments(
         self, collection_id: UUID
