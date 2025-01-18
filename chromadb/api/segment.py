@@ -135,6 +135,7 @@ class SegmentAPI(ServerAPI):
         self._producer = self.require(Producer)
         self._rate_limit_enforcer = self._system.require(RateLimitEnforcer)
         self._collection_version_cache = {}
+        self._collection_cache = {}
 
     @override
     def heartbeat(self) -> int:
@@ -302,21 +303,26 @@ class SegmentAPI(ServerAPI):
     # TODO: Actually fix CollectionMetadata type to remove type: ignore flags. This is
     # necessary because changing the value type from `Any` to`` `Union[str, int, float]`
     # causes the system to somehow convert all values to strings
-    @trace_method("SegmentAPI.get_collection", OpenTelemetryGranularity.OPERATION)
+    # @trace_method("SegmentAPI.get_collection", OpenTelemetryGranularity.OPERATION)
     @override
-    @rate_limit
+    # @rate_limit
     def get_collection(
         self,
         name: Optional[str] = None,
         tenant: str = DEFAULT_TENANT,
         database: str = DEFAULT_DATABASE,
     ) -> CollectionModel:
+        collection_key = (name, tenant, database)
+        if collection_key in self._collection_cache:
+            return self._collection_cache[collection_key]
         existing = self._sysdb.get_collections(
             name=name, tenant=tenant, database=database
         )
 
         if existing:
-            return existing[0]
+            collection = existing[0]
+            self._collection_cache[collection_key] = collection
+            return collection
         else:
             raise InvalidCollectionException(f"Collection {name} does not exist.")
 

@@ -852,7 +852,7 @@ class FastAPI(Server):
         )
         return api_collection_model
 
-    @trace_method("FastAPI.get_collection", OpenTelemetryGranularity.OPERATION)
+    # @trace_method("FastAPI.get_collection", OpenTelemetryGranularity.OPERATION)
     async def get_collection(
         self,
         request: Request,
@@ -860,15 +860,20 @@ class FastAPI(Server):
         database_name: str,
         collection_name: str,
     ) -> CollectionModel:
-        await self.auth_request(
-            request.headers,
-            AuthzAction.GET_COLLECTION,
-            tenant,
-            database_name,
-            collection_name,
-        )
+        from chromadb.telemetry.opentelemetry import tracer
+        span = tracer.start_span("FastAPI.get_coll")
+        auth_key = (request.headers["x-chroma-token"], tenant, database_name, collection_name)
+        if auth_key not in self._auth_cache:
+            await self.auth_request(
+                request.headers,
+                AuthzAction.GET_COLLECTION,
+                tenant,
+                database_name,
+                collection_name,
+            )
+            self._auth_cache.add(auth_key)
 
-        add_attributes_to_current_span({"tenant": tenant})
+        # add_attributes_to_current_span({"tenant": tenant})
 
         api_collection_model = cast(
             CollectionModel,
@@ -880,6 +885,7 @@ class FastAPI(Server):
                 limiter=self._capacity_limiter,
             ),
         )
+        span.end()
         return api_collection_model
 
     @trace_method("FastAPI.update_collection", OpenTelemetryGranularity.OPERATION)
