@@ -144,11 +144,9 @@ async fn query(
 ) -> Result<Json<QueryResponse>, (StatusCode, String)> {
     let collection_uuid = Uuid::parse_str(&collection_id)
         .map_err(|err| (StatusCode::BAD_REQUEST, err.to_string()))?;
-    tracing::info!(
-        "Querying database for tenant: {}, db_name: {} and collection id: {}",
-        tenant,
-        database_name,
-        collection_uuid
+    println!(
+        "[FRONTEND] Querying database for tenant: {}, db_name: {} and collection id: {}",
+        tenant, database_name, collection_uuid
     );
     match server
         .frontend
@@ -163,9 +161,12 @@ async fn query(
         })
         .await
     {
-        Ok(result) => Ok(Json(result)),
+        Ok(result) => {
+            println!("[FRONTEND] Successful query!");
+            Ok(Json(result))
+        }
         Err(err) => {
-            println!("[FRONTEND-QUERY-ERROR] Error during query: {err}");
+            println!("[FRONTEND] Error during query: {err}");
             Err((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))
         }
     }

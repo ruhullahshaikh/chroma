@@ -17,7 +17,10 @@ use chroma_types::{
     CollectionAndSegments,
 };
 use futures::{stream, StreamExt, TryStreamExt};
-use tokio::signal::unix::{signal, SignalKind};
+use tokio::{
+    signal::unix::{signal, SignalKind},
+    time::Instant,
+};
 use tonic::{transport::Server, Request, Response, Status};
 use tracing::{trace_span, Instrument};
 
@@ -348,6 +351,8 @@ impl QueryExecutor for WorkerServer {
     }
 
     async fn knn(&self, knn: Request<KnnPlan>) -> Result<Response<KnnBatchResult>, Status> {
+        let now = Instant::now();
+        println!("[QUERY] KNN request arrives");
         // Note: We cannot write a middleware that instruments every service rpc
         // with a span because of https://github.com/hyperium/tonic/pull/1202.
         let knn_span = trace_span!(
@@ -355,9 +360,15 @@ impl QueryExecutor for WorkerServer {
             knn = ?knn
         );
         let instrumented_span = wrap_span_with_parent_context(knn_span, knn.metadata());
-        self.orchestrate_knn(knn)
+        let res = self
+            .orchestrate_knn(knn)
             .instrument(instrumented_span)
-            .await
+            .await;
+        println!(
+            "[QUERY] KNN request fulfilled at {}ms",
+            now.elapsed().as_millis()
+        );
+        res
     }
 }
 

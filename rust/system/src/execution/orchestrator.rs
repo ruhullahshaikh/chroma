@@ -33,7 +33,7 @@ pub trait Orchestrator: Debug + Send + Sized + 'static {
     /// Runs the orchestrator in a system and returns the result
     async fn run(mut self, system: System) -> Result<Self::Output, Self::Error> {
         let now = Instant::now();
-        println!("Starting [{}] at {:#?}", Self::name(), now);
+        println!("Starting [{}]", Self::name());
         let (tx, rx) = oneshot::channel();
         self.set_result_channel(tx);
         let mut handle = system.start_component(self);
@@ -43,9 +43,8 @@ pub trait Orchestrator: Debug + Send + Sized + 'static {
             println!("Encountered error when running [{}]: {}", Self::name(), err);
         }
         println!(
-            "Successfully finshed [{}] at {:#?}, lasting {}ms",
+            "Successfully finshed [{}] in {}ms",
             Self::name(),
-            now,
             now.elapsed().as_millis()
         );
         res?

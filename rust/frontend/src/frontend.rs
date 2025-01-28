@@ -68,6 +68,7 @@ impl Frontend {
             .get_collection_with_segments(collectio_id)
             .await
             .map_err(|_| QueryError::CollectionSegments)?;
+        println!("[FRONTEND] Collection and Segments information ready");
         let query_result = self
             .executor
             .knn(Knn {
