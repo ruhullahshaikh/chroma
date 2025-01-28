@@ -155,4 +155,5 @@ class SysDBStateMachine(RuleBasedStateMachine):
 
 def test_sysdb(caplog: pytest.LogCaptureFixture, system: System) -> None:
     sysdb = next(sqlite()) if NOT_CLUSTER_ONLY else next(grpc_with_real_server())
+
     run_state_machine_as_test(lambda: SysDBStateMachine(sysdb=sysdb))  # type: ignore[no-untyped-call]
