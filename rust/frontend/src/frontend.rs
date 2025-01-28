@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use chroma_config::Configurable;
 use chroma_error::ChromaError;
@@ -9,6 +9,7 @@ use chroma_types::{
     CollectionAndSegments, CollectionUuid, CreateDatabaseError, CreateDatabaseResponse,
     GetDatabaseError, Include, QueryError,
 };
+use tokio::sync::Mutex;
 
 use crate::{config::FrontendConfig, executor::Executor};
 
@@ -23,7 +24,7 @@ pub struct Frontend {
     executor: Executor,
     sysdb_client: Box<sysdb::SysDb>,
     // WARN: This is experimental
-    collection_version_cache: HashMap<CollectionUuid, CollectionAndSegments>,
+    collection_version_cache: Arc<Mutex<HashMap<CollectionUuid, CollectionAndSegments>>>,
 }
 
 impl Frontend {
@@ -32,7 +33,7 @@ impl Frontend {
             // WARN: This is a placeholder impl, which should be replaced by proper initialization from config
             executor: Executor::default(),
             sysdb_client,
-            collection_version_cache: HashMap::new(),
+            collection_version_cache: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -68,21 +69,27 @@ impl Frontend {
         request: chroma_types::QueryRequest,
     ) -> Result<chroma_types::QueryResponse, QueryError> {
         let collectio_id = CollectionUuid(request.collection_id);
-        let collection_and_segments =
-            if let Some(cas) = self.collection_version_cache.get(&collectio_id) {
-                println!("[FRONTEND] Collection and segments cache hit");
-                cas.clone()
-            } else {
-                println!("[FRONTEND] Collection and segments cache miss");
-                let cas = self
-                    .sysdb_client
-                    .get_collection_with_segments(collectio_id)
-                    .await
-                    .map_err(|_| QueryError::CollectionSegments)?;
-                self.collection_version_cache
-                    .insert(collectio_id, cas.clone());
-                cas
-            };
+        let collection_and_segments = if let Some(cas) = self
+            .collection_version_cache
+            .lock()
+            .await
+            .get(&collectio_id)
+        {
+            println!("[FRONTEND] Collection and segments cache hit");
+            cas.clone()
+        } else {
+            println!("[FRONTEND] Collection and segments cache miss");
+            let cas = self
+                .sysdb_client
+                .get_collection_with_segments(collectio_id)
+                .await
+                .map_err(|_| QueryError::CollectionSegments)?;
+            self.collection_version_cache
+                .lock()
+                .await
+                .insert(collectio_id, cas.clone());
+            cas
+        };
         println!("[FRONTEND] Collection and Segments information ready");
         let query_result = self
             .executor
