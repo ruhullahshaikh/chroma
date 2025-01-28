@@ -69,12 +69,8 @@ impl Frontend {
         request: chroma_types::QueryRequest,
     ) -> Result<chroma_types::QueryResponse, QueryError> {
         let collectio_id = CollectionUuid(request.collection_id);
-        let collection_and_segments = if let Some(cas) = self
-            .collection_version_cache
-            .lock()
-            .await
-            .get(&collectio_id)
-        {
+        let mut guard = self.collection_version_cache.lock().await;
+        let collection_and_segments = if let Some(cas) = guard.get(&collectio_id) {
             println!("[FRONTEND] Collection and segments cache hit");
             cas.clone()
         } else {
@@ -84,12 +80,11 @@ impl Frontend {
                 .get_collection_with_segments(collectio_id)
                 .await
                 .map_err(|_| QueryError::CollectionSegments)?;
-            self.collection_version_cache
-                .lock()
-                .await
-                .insert(collectio_id, cas.clone());
+            guard.insert(collectio_id, cas.clone());
             cas
         };
+        drop(guard);
+
         println!("[FRONTEND] Collection and Segments information ready");
         let query_result = self
             .executor
