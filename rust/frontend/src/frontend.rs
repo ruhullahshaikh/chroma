@@ -71,10 +71,8 @@ impl Frontend {
         let collectio_id = CollectionUuid(request.collection_id);
         let mut guard = self.collection_version_cache.lock().await;
         let collection_and_segments = if let Some(cas) = guard.get(&collectio_id) {
-            println!("[FRONTEND] Collection and segments cache hit");
             cas.clone()
         } else {
-            println!("[FRONTEND] Collection and segments cache miss");
             let cas = self
                 .sysdb_client
                 .get_collection_with_segments(collectio_id)
@@ -84,8 +82,6 @@ impl Frontend {
             cas
         };
         drop(guard);
-
-        println!("[FRONTEND] Collection and Segments information ready");
         let query_result = self
             .executor
             .knn(Knn {

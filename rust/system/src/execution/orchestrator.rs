@@ -3,10 +3,7 @@ use async_trait::async_trait;
 use chroma_error::ChromaError;
 use core::fmt::Debug;
 use std::any::type_name;
-use tokio::{
-    sync::oneshot::{self, error::RecvError, Sender},
-    time::Instant,
-};
+use tokio::sync::oneshot::{self, error::RecvError, Sender};
 use tracing::Span;
 
 use crate::{Dispatcher, TaskMessage};
@@ -32,21 +29,11 @@ pub trait Orchestrator: Debug + Send + Sized + 'static {
 
     /// Runs the orchestrator in a system and returns the result
     async fn run(mut self, system: System) -> Result<Self::Output, Self::Error> {
-        let now = Instant::now();
-        println!("Starting [{}]", Self::name());
         let (tx, rx) = oneshot::channel();
         self.set_result_channel(tx);
         let mut handle = system.start_component(self);
         let res = rx.await;
         handle.stop();
-        if let Err(err) = &res {
-            println!("Encountered error when running [{}]: {}", Self::name(), err);
-        }
-        println!(
-            "Successfully finshed [{}] in {}ms",
-            Self::name(),
-            now.elapsed().as_millis()
-        );
         res?
     }
 

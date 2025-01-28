@@ -10,12 +10,12 @@ use std::sync::Arc;
 use thiserror::Error;
 use tracing::{Instrument, Span};
 
+use super::distributed_hnsw::DistributedHNSWSegmentWriter;
 use super::blockfile_metadata::{MetadataSegmentFlusher, MetadataSegmentWriter};
 use super::blockfile_record::{
     ApplyMaterializedLogError, RecordSegmentFlusher, RecordSegmentReader,
     RecordSegmentReaderCreationError, RecordSegmentWriter,
 };
-use super::distributed_hnsw::DistributedHNSWSegmentWriter;
 
 // Materializes metadata from update metadata, populating the delete list
 // and upsert list.
@@ -841,7 +841,7 @@ pub async fn materialize_logs(
             }
         }
         Ok(())
-    }.await?;
+    }.instrument(tracing::info_span!(parent: Span::current(), "Materialization main iteration")).await?;
     let mut res = vec![];
     for (_key, value) in existing_id_to_materialized {
         // Ignore records that only had invalid ADDS on the log.
