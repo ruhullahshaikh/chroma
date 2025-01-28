@@ -164,6 +164,9 @@ async fn query(
         .await
     {
         Ok(result) => Ok(Json(result)),
-        Err(err) => Err((StatusCode::INTERNAL_SERVER_ERROR, err.to_string())),
+        Err(err) => {
+            println!("[FRONTEND-QUERY-ERROR] Error during query: {err}");
+            Err((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))
+        }
     }
 }

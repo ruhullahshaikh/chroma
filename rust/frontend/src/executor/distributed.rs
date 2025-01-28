@@ -52,7 +52,7 @@ impl Default for DistributedExecutor {
         )
         .expect("This should be a valid endpoint for query service")
         .connect_timeout(Duration::from_secs(6))
-        .timeout(Duration::from_secs(1));
+        .timeout(Duration::from_secs(60));
         Self {
             client: QueryExecutorClient::new(Channel::balance_list(once(endpoint).cycle().take(6))),
         }
