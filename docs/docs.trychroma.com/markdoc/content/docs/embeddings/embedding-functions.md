@@ -122,4 +122,67 @@ class MyEmbeddingFunction {
 
 {% /TabbedCodeBlock %}
 
+## Example
+
+{% TabbedCodeBlock %}
+
+{% Tab label="python" %}
+```python
+# creating custom embeddings with non-default embedding model
+
+from chromadb import Documents, EmbeddingFunction, Embeddings
+
+class MyEmbeddingFunction(EmbeddingFunction):
+    def __call__(self, input: Documents) -> Embeddings:
+        # embed the documents
+        
+        from sentence_transformers import SentenceTransformer
+
+        sentences = input
+    
+        model = SentenceTransformer('sentence-transformers/all-MiniLM-L12-v2',
+                                   device='cuda',
+                           use_auth_token=hf_auth,
+                           cache_folder='/home/username/stuff/username_storage/LLM/weights/huggingface/hub/')
+        embeddings = model.encode(sentences)
+
+
+        # Convert embeddings to a list of lists
+        embeddings_as_list = [embedding.tolist() for embedding in embeddings]
+        
+        return embeddings_as_list
+        
+        
+        
+custom_embeddings=MyEmbeddingFunction()
+
+test_collection = chroma_client\
+.get_or_create_collection(name="test_custom_embeddings",
+                          embedding_function=custom_embeddings
+                         
+                         )
+                         
+                         
+# inserting data
+
+test_collection.upsert(
+    ids=[f"{x}" for x in summary_df['id'].tolist()],
+    documents=summary_df['summary'].tolist(),
+    metadatas=summary_df['meta'].tolist()    
+)
+
+
+qry_str = """Title contains Data Scientist"""
+
+
+db_query_results=test_collection.query(query_texts=qry_str, n_results=2)
+
+result_summaries=[x['summary'] for x in db_query_results['metadatas'][0]]
+
+result_summaries  
+```
+{% /Tab %}
+
+{% /TabbedCodeBlock %}
+
 We welcome contributions! If you create an embedding function that you think would be useful to others, please consider [submitting a pull request](https://github.com/chroma-core/chroma) to add it to Chroma's `embedding_functions` module.
